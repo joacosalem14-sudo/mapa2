@@ -104,7 +104,7 @@ h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom
 
 <script>
 const BARRIOS = ["AGRONOMIA", "ALMAGRO", "BALVANERA", "BARRACAS", "BELGRANO", "BOCA", "BOEDO", "CABALLITO", "CHACARITA", "COGHLAN", "COLEGIALES", "CONSTITUCION", "FLORES", "FLORESTA", "LINIERS", "MATADEROS", "MONSERRAT", "MONTE CASTRO", "NUEVA POMPEYA", "NÚÑEZ", "PALERMO", "PARQUE AVELLANEDA", "PARQUE CHACABUCO", "PARQUE CHAS", "PARQUE PATRICIOS", "PATERNAL", "PUERTO MADERO", "RECOLETA", "RETIRO", "SAAVEDRA", "SAN CRISTOBAL", "SAN NICOLAS", "SAN TELMO", "VELEZ SARSFIELD", "VERSALLES", "VILLA CRESPO", "VILLA DEL PARQUE", "VILLA DEVOTO", "VILLA GRAL. MITRE", "VILLA LUGANO", "VILLA LURO", "VILLA ORTUZAR", "VILLA PUEYRREDON", "VILLA REAL", "VILLA RIACHUELO", "VILLA SANTA RITA", "VILLA SOLDATI", "VILLA URQUIZA"];
-const TIPOS   = ["ND", "CA", "CA / CM", "CA / USAA", "CA / USAM", "CM", "CM / CA", "CM / USAA", "CM / USAM", "USAA", "USAA / CA", "USAA / CM", "USAA / USAB1", "USAA / USAB2", "USAA / USAM", "USAB1", "USAB1 / USAA", "USAB1 / USAB2", "USAB1 / USAM", "USAB2", "USAB2 / CA", "USAB2 / USAA", "USAB2 / USAB1", "USAB2 / USAM", "USAM", "USAM / CM", "USAM / USAA", "USAM / USAB1", "USAM / USAB2"];
+const TIPOS   = ["ND", "CA", "CA / CM", "CA / USAA", "CA / USAM", "CM", "CM / CA", "CM / USAA", "CM / USAM", "U1", "U10", "U11", "U13", "U15", "U17", "U19", "U2", "U20", "U21", "U22", "U23", "U26", "U28", "U3", "U31", "U32", "U33", "U34", "U35", "U36", "U38", "U39", "U4", "U40", "U41", "U42", "U43", "U45", "U5", "U50", "U51", "U52", "U53", "U54", "U55", "U56", "U57", "U58", "U59", "U6", "U60", "U61", "U62", "U63", "U64", "U65", "U66", "U67", "U8", "U9", "UF", "UP", "UP/APH 2", "USAA", "USAA / CA", "USAA / CM", "USAA / USAB1", "USAA / USAB2", "USAA / USAM", "USAB1", "USAB1 / USAA", "USAB1 / USAB2", "USAB1 / USAM", "USAB2", "USAB2 / CA", "USAB2 / USAA", "USAB2 / USAB1", "USAB2 / USAM", "USAM", "USAM / CM", "USAM / USAA", "USAM / USAB1", "USAM / USAB2"];
 const UFS     = [0, 2, 3];
 
 const listaBarrios = document.getElementById('lista-barrios');
@@ -257,7 +257,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-05 11:47";
+document.getElementById("ver").textContent = "v2026-05-05 14:47";
 </script>
 </body>
 </html>
