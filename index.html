@@ -104,7 +104,7 @@ h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom
 
 <script>
 const BARRIOS = ["AGRONOMIA", "ALMAGRO", "BALVANERA", "BARRACAS", "BELGRANO", "BOCA", "BOEDO", "CABALLITO", "CHACARITA", "COGHLAN", "COLEGIALES", "CONSTITUCION", "FLORES", "FLORESTA", "LINIERS", "MATADEROS", "MONSERRAT", "MONTE CASTRO", "NUEVA POMPEYA", "NÚÑEZ", "PALERMO", "PARQUE AVELLANEDA", "PARQUE CHACABUCO", "PARQUE CHAS", "PARQUE PATRICIOS", "PATERNAL", "PUERTO MADERO", "RECOLETA", "RETIRO", "SAAVEDRA", "SAN CRISTOBAL", "SAN NICOLAS", "SAN TELMO", "VELEZ SARSFIELD", "VERSALLES", "VILLA CRESPO", "VILLA DEL PARQUE", "VILLA DEVOTO", "VILLA GRAL. MITRE", "VILLA LUGANO", "VILLA LURO", "VILLA ORTUZAR", "VILLA PUEYRREDON", "VILLA REAL", "VILLA RIACHUELO", "VILLA SANTA RITA", "VILLA SOLDATI", "VILLA URQUIZA"];
-const TIPOS   = ["CA", "CA / CM", "CA / USAA", "CA / USAM", "CM", "CM / CA", "CM / USAA", "CM / USAM", "ND", "USAA", "USAA / CA", "USAA / CM", "USAA / USAB1", "USAA / USAB2", "USAA / USAM", "USAB1", "USAB1 / USAA", "USAB1 / USAB2", "USAB1 / USAM", "USAB2", "USAB2 / CA", "USAB2 / USAA", "USAB2 / USAB1", "USAB2 / USAM", "USAM", "USAM / CM", "USAM / USAA", "USAM / USAB1", "USAM / USAB2"];
+const TIPOS   = ["ND", "CA", "CA / CM", "CA / USAA", "CA / USAM", "CM", "CM / CA", "CM / USAA", "CM / USAM", "USAA", "USAA / CA", "USAA / CM", "USAA / USAB1", "USAA / USAB2", "USAA / USAM", "USAB1", "USAB1 / USAA", "USAB1 / USAB2", "USAB1 / USAM", "USAB2", "USAB2 / CA", "USAB2 / USAA", "USAB2 / USAB1", "USAB2 / USAM", "USAM", "USAM / CM", "USAM / USAA", "USAM / USAB1", "USAM / USAB2"];
 const UFS     = [0, 2, 3];
 
 const listaBarrios = document.getElementById('lista-barrios');
@@ -113,7 +113,7 @@ BARRIOS.forEach(b => {
 });
 const listaTipos = document.getElementById('lista-tipos');
 TIPOS.forEach(t => {
-  listaTipos.innerHTML += `<label><input type="checkbox" class="cb-tipo" value="${t}" checked> ${t}</label>`;
+  listaTipos.innerHTML += `<label><input type="checkbox" class="cb-tipo" value="${t}" checked> ${t === 'ND' ? 'SIN IDENTIFICAR' : t}</label>`;
 });
 const listaUfs = document.getElementById('lista-ufs');
 UFS.forEach(u => {
@@ -155,7 +155,7 @@ function dibujarPoligono(smp, marker) {
   fetch(`https://epok.buenosaires.gob.ar/catastro/geometria/?smp=${encodeURIComponent(smp)}`)
     .then(r => r.json())
     .then(data => {
-      const geom = data.geometria || data.geometry || data;
+      const geom = (data.features && data.features[0] && data.features[0].geometry) || data.geometry || data.geometria;
       console.log('EPOK data:', JSON.stringify(data).slice(0,200));
       if (!geom || !geom.type) { console.warn('geom invalido:', geom); return; }
       capaPoligono = L.geoJSON(geom, { style: { color: '#e91e8c', weight: 2.5, fillColor: '#e91e8c', fillOpacity: 0.15 } }).addTo(map);
@@ -257,7 +257,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-05 11:42";
+document.getElementById("ver").textContent = "v2026-05-05 11:47";
 </script>
 </body>
 </html>
