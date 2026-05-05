@@ -237,7 +237,7 @@ async function buscarDireccion(q) {
   list.style.width = rect.width + 'px';
   list.innerHTML = res.map(r =>
     `<div class="sugerencia" onclick="irA('${r[0]}','${r[1]}',
-      ${r[2]},${r[3]})">
+      ${r[2]},${r[3]},'${r[4]}')">
       ${r[0]} <span>${r[1]}</span></div>`
   ).join('');
   list.style.display = 'block';
@@ -247,12 +247,16 @@ function hideSugerencias() {
   document.getElementById('sugerencias').style.display = 'none';
 }
 
-function irA(dir, barrio, lat, lon) {
+async function irA(dir, barrio, lat, lon, smp) {
   hideSugerencias();
-  document.getElementById('buscar-dir').value = dir + ', ' + barrio;
-  map.setView([lat, lon], 18);
+  document.getElementById('buscar-dir').value = dir;
   const cb = document.querySelector(`.cb-barrio[value="${barrio}"]`);
   if (cb && !cb.checked) cb.checked = true;
+  await aplicarFiltros(true);
+  if (capa) {
+    const target = capa.getLayers().find(m => m._smp === smp);
+    if (target) { map.setView(target.getLatLng(), 18); target.openPopup(); }
+  }
 }
 
 document.addEventListener('click', e => {
@@ -268,7 +272,7 @@ async function cargarBarrio(barrio) {
   return data;
 }
 
-async function aplicarFiltros() {
+async function aplicarFiltros(skipFitBounds=false) {
   const barrios   = getChecked('cb-barrio');
   const tipos     = new Set(getChecked('cb-tipo'));
   const ufs      = new Set(getChecked('cb-uf').map(Number));
@@ -306,18 +310,17 @@ async function aplicarFiltros() {
           if (!isNaN(alturaMax) && altMaxNum > alturaMax) return;
         }
         const pos = (smp && correctedPos[smp]) ? correctedPos[smp] : [lat, lon];
-        todosMarkers.push(
-          L.circleMarker(pos, {
+        const m = L.circleMarker(pos, {
             radius: 5, color: '#c0392b', weight: 1,
             fillColor: '#e74c3c', fillOpacity: 0.7
-          }).bindPopup(mkPopup(r, barrio), {maxWidth: 280}).on('click', (e) => dibujarPoligono(smp, e.target))
-        );
-      });
+          }).bindPopup(mkPopup(r, barrio), {maxWidth: 280}).on('click', (e) => dibujarPoligono(smp, e.target));
+        m._smp = smp;
+        todosMarkers.push(m);
     }
 
     if (!todosMarkers.length) { setStatus('Sin resultados.'); return; }
     capa = L.layerGroup(todosMarkers).addTo(map);
-    map.fitBounds(L.latLngBounds(todosMarkers.map(m => m.getLatLng())), {padding: [20, 20]});
+    if (!skipFitBounds) map.fitBounds(L.latLngBounds(todosMarkers.map(m => m.getLatLng())), {padding: [20, 20]});
     setStatus(todosMarkers.length.toLocaleString() + ' parcelas');
   } catch(e) {
     setStatus('Error al cargar datos.');
@@ -336,7 +339,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-05 15:18";
+document.getElementById("ver").textContent = "v2026-05-05 15:50";
 </script>
 </body>
 </html>
