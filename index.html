@@ -169,6 +169,7 @@ async function aplicarFiltros() {
       const rows = await cargarBarrio(barrio);
       rows.forEach(r => {
         const [lat, lon, dir, pda, frente, fondo, tipo, altMax, altMaxNum] = r;
+        if (lat === null || lon === null) return;
         if (!tipos.has(tipo ?? 'ND')) return;
         if (!isNaN(frenteMin) && (frente === null || frente < frenteMin)) return;
         if (!isNaN(frenteMax) && (frente === null || frente > frenteMax)) return;
