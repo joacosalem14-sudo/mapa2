@@ -317,6 +317,7 @@ async function aplicarFiltros(skipFitBounds=false) {
         m._smp = smp;
         todosMarkers.push(m);
       });
+    }
 
     if (!todosMarkers.length) { setStatus('Sin resultados.'); return; }
     capa = L.layerGroup(todosMarkers).addTo(map);
@@ -339,7 +340,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-05 16:10";
+document.getElementById("ver").textContent = "v2026-05-05 16:33";
 </script>
 </body>
 </html>
