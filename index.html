@@ -316,7 +316,7 @@ async function aplicarFiltros(skipFitBounds=false) {
           }).bindPopup(mkPopup(r, barrio), {maxWidth: 280}).on('click', (e) => dibujarPoligono(smp, e.target));
         m._smp = smp;
         todosMarkers.push(m);
-    }
+      });
 
     if (!todosMarkers.length) { setStatus('Sin resultados.'); return; }
     capa = L.layerGroup(todosMarkers).addTo(map);
@@ -339,7 +339,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-05 16:02";
+document.getElementById("ver").textContent = "v2026-05-05 16:10";
 </script>
 </body>
 </html>
