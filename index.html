@@ -46,12 +46,31 @@ h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom
   #panel { width: 100%; min-width: unset; max-height: 45dvh; border-right: none; border-bottom: 1px solid #dee2e6; }
   #map { flex: 1; min-height: 0; }
 }
+#sugerencias {
+  position: fixed; z-index: 9999; background: white;
+  border: 1px solid #ccc; border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15); display: none; max-height: 220px; overflow-y: auto;
+}
+.sugerencia {
+  padding: 7px 10px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #f0f0f0;
+}
+.sugerencia:hover { background: #f0f6ff; }
+.sugerencia span { color: #888; font-size: 11px; margin-left: 5px; }
+#buscar-dir { width:100%; padding:6px; border:1px solid #ccc; border-radius:4px; font-size:14px; box-sizing:border-box; }
 </style>
 </head>
 <body>
 <div id="app">
 <div id="panel">
   <h2>Catastro CABA <span id="ver"></span></h2>
+
+  <div class="filter-group" style="position:relative">
+    <h3>Buscar dirección</h3>
+    <input type="text" id="buscar-dir" placeholder="Ej: Arcos 1860"
+           oninput="debounceBuscar(this.value)"
+           onkeydown="if(event.key==='Escape')hideSugerencias()"
+           autocomplete="off">
+  </div>
 
   <div class="filter-group">
     <h3>Barrio <span class="sel-link" onclick="toggleAll('cb-barrio',true)">todos</span> <span class="sel-link" onclick="toggleAll('cb-barrio',false)">ninguno</span></h3>
@@ -101,6 +120,7 @@ h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom
 </div>
 <div id="map"></div>
 </div>
+<div id="sugerencias"></div>
 
 <script>
 const BARRIOS = ["AGRONOMIA", "ALMAGRO", "BALVANERA", "BARRACAS", "BELGRANO", "BOCA", "BOEDO", "CABALLITO", "CHACARITA", "COGHLAN", "COLEGIALES", "CONSTITUCION", "FLORES", "FLORESTA", "LINIERS", "MATADEROS", "MONSERRAT", "MONTE CASTRO", "NUEVA POMPEYA", "NÚÑEZ", "PALERMO", "PARQUE AVELLANEDA", "PARQUE CHACABUCO", "PARQUE CHAS", "PARQUE PATRICIOS", "PATERNAL", "PUERTO MADERO", "RECOLETA", "RETIRO", "SAAVEDRA", "SAN CRISTOBAL", "SAN NICOLAS", "SAN TELMO", "VELEZ SARSFIELD", "VERSALLES", "VILLA CRESPO", "VILLA DEL PARQUE", "VILLA DEVOTO", "VILLA GRAL. MITRE", "VILLA LUGANO", "VILLA LURO", "VILLA ORTUZAR", "VILLA PUEYRREDON", "VILLA REAL", "VILLA RIACHUELO", "VILLA SANTA RITA", "VILLA SOLDATI", "VILLA URQUIZA"];
@@ -181,6 +201,65 @@ function mkPopup(r, barrio) {
   </table>`;
 }
 
+
+let indice = null;
+let buscarTimer = null;
+
+function normalizar(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+}
+
+async function loadIndice() {
+  if (indice) return indice;
+  const r = await fetch('datos/indice.json');
+  indice = await r.json();
+  return indice;
+}
+
+function debounceBuscar(q) {
+  clearTimeout(buscarTimer);
+  if (q.length < 3) { hideSugerencias(); return; }
+  buscarTimer = setTimeout(() => buscarDireccion(q), 250);
+}
+
+async function buscarDireccion(q) {
+  const idx = await loadIndice();
+  const qn = normalizar(q);
+  const res = idx.filter(r => normalizar(r[0]).startsWith(qn))
+               .concat(idx.filter(r => !normalizar(r[0]).startsWith(qn) && normalizar(r[0]).includes(qn)))
+               .slice(0, 8);
+  if (!res.length) { hideSugerencias(); return; }
+  const input = document.getElementById('buscar-dir');
+  const rect = input.getBoundingClientRect();
+  const list = document.getElementById('sugerencias');
+  list.style.left  = rect.left + 'px';
+  list.style.top   = (rect.bottom + 2) + 'px';
+  list.style.width = rect.width + 'px';
+  list.innerHTML = res.map(r =>
+    `<div class="sugerencia" onclick="irA('${r[0]}','${r[1]}',
+      ${r[2]},${r[3]})">
+      ${r[0]} <span>${r[1]}</span></div>`
+  ).join('');
+  list.style.display = 'block';
+}
+
+function hideSugerencias() {
+  document.getElementById('sugerencias').style.display = 'none';
+}
+
+function irA(dir, barrio, lat, lon) {
+  hideSugerencias();
+  document.getElementById('buscar-dir').value = dir + ', ' + barrio;
+  map.setView([lat, lon], 18);
+  const cb = document.querySelector(`.cb-barrio[value="${barrio}"]`);
+  if (cb && !cb.checked) cb.checked = true;
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#buscar-dir') && !e.target.closest('#sugerencias'))
+    hideSugerencias();
+});
+
 async function cargarBarrio(barrio) {
   if (cache[barrio]) return cache[barrio];
   const r = await fetch(`datos/${encodeURIComponent(barrio)}.json`);
@@ -257,7 +336,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-05 14:47";
+document.getElementById("ver").textContent = "v2026-05-05 15:18";
 </script>
 </body>
 </html>
