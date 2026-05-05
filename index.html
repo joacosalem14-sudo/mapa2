@@ -61,6 +61,11 @@ h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom
   <div class="filter-group">
     <h3>Zonificación <span class="sel-link" onclick="toggleAll('cb-tipo',true)">todas</span> <span class="sel-link" onclick="toggleAll('cb-tipo',false)">ninguna</span></h3>
     <div class="cb-list" id="lista-tipos"></div>
+
+  <div class="filter-group">
+    <h3>Unidades funcionales <span class="sel-link" onclick="toggleAll('cb-uf',true)">todas</span> <span class="sel-link" onclick="toggleAll('cb-uf',false)">ninguna</span></h3>
+    <div class="cb-list" id="lista-ufs"></div>
+  </div>
   </div>
 
   <div class="filter-group">
@@ -100,6 +105,7 @@ h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom
 <script>
 const BARRIOS = ["AGRONOMIA", "ALMAGRO", "BALVANERA", "BARRACAS", "BELGRANO", "BOCA", "BOEDO", "CABALLITO", "CHACARITA", "COGHLAN", "COLEGIALES", "CONSTITUCION", "FLORES", "FLORESTA", "LINIERS", "MATADEROS", "MONSERRAT", "MONTE CASTRO", "NUEVA POMPEYA", "NÚÑEZ", "PALERMO", "PARQUE AVELLANEDA", "PARQUE CHACABUCO", "PARQUE CHAS", "PARQUE PATRICIOS", "PATERNAL", "PUERTO MADERO", "RECOLETA", "RETIRO", "SAAVEDRA", "SAN CRISTOBAL", "SAN NICOLAS", "SAN TELMO", "VELEZ SARSFIELD", "VERSALLES", "VILLA CRESPO", "VILLA DEL PARQUE", "VILLA DEVOTO", "VILLA GRAL. MITRE", "VILLA LUGANO", "VILLA LURO", "VILLA ORTUZAR", "VILLA PUEYRREDON", "VILLA REAL", "VILLA RIACHUELO", "VILLA SANTA RITA", "VILLA SOLDATI", "VILLA URQUIZA"];
 const TIPOS   = ["CA", "CA / CM", "CA / USAA", "CA / USAM", "CM", "CM / CA", "CM / USAA", "CM / USAM", "ND", "USAA", "USAA / CA", "USAA / CM", "USAA / USAB1", "USAA / USAB2", "USAA / USAM", "USAB1", "USAB1 / USAA", "USAB1 / USAB2", "USAB1 / USAM", "USAB2", "USAB2 / CA", "USAB2 / USAA", "USAB2 / USAB1", "USAB2 / USAM", "USAM", "USAM / CM", "USAM / USAA", "USAM / USAB1", "USAM / USAB2"];
+const UFS     = [0, 2, 3];
 
 const listaBarrios = document.getElementById('lista-barrios');
 BARRIOS.forEach(b => {
@@ -109,6 +115,11 @@ const listaTipos = document.getElementById('lista-tipos');
 TIPOS.forEach(t => {
   listaTipos.innerHTML += `<label><input type="checkbox" class="cb-tipo" value="${t}" checked> ${t}</label>`;
 });
+const listaUfs = document.getElementById('lista-ufs');
+UFS.forEach(u => {
+  listaUfs.innerHTML += `<label><input type="checkbox" class="cb-uf" value="${u}" checked> ${u} UF</label>`;
+});
+
 
 const map = L.map('map').setView([-34.615, -58.44], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -116,6 +127,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let capa = null;
+let capaPoligono = null;
 const cache = {};
 
 function toggleAll(cls, val) {
@@ -127,9 +139,24 @@ function getChecked(cls) {
 function nd(v) { return (v === null || v === undefined || v === '') ? 'ND' : v; }
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
 
+function dibujarPoligono(smp) {
+  if (capaPoligono) { map.removeLayer(capaPoligono); capaPoligono = null; }
+  if (!smp) return;
+  fetch(`https://epok.buenosaires.gob.ar/catastro/geometria/?smp=${encodeURIComponent(smp)}`)
+    .then(r => r.json())
+    .then(data => {
+      const geom = data.geometria || data.geometry || data;
+      if (!geom) return;
+      capaPoligono = L.geoJSON(geom, { style: { color: '#e91e8c', weight: 2.5, fillColor: '#e91e8c', fillOpacity: 0.15 } }).addTo(map);
+    })
+    .catch(() => {});
+}
+
 function mkPopup(r, barrio) {
-  const [lat, lon, dir, pda, frente, fondo, tipo, altMax] = r;
-  return `<table class="popup-table">
+  const [lat, lon, dir, pda, frente, fondo, tipo, altMax, _n, _u, smp] = r;
+  const fotoUrl = `https://fotos.usig.buenosaires.gob.ar/getFoto?smp=${(smp||'')}&i=0&w=280&h=180`;
+  const fotoHtml = smp ? `<img src="${fotoUrl}" style="width:100%;border-radius:4px;margin-bottom:5px;display:block" onerror="this.style.display='none'">` : '';
+  return `${fotoHtml}<table class="popup-table">
     <tr><td>Dirección / Barrio</td><td><b>${nd(dir)} / ${barrio}</b></td></tr>
     <tr><td>Partida Matriz</td><td>${nd(pda)}</td></tr>
     <tr><td>Frente / Fondo</td><td>${nd(frente)} m / ${nd(fondo)} m</td></tr>
@@ -149,6 +176,7 @@ async function cargarBarrio(barrio) {
 async function aplicarFiltros() {
   const barrios   = getChecked('cb-barrio');
   const tipos     = new Set(getChecked('cb-tipo'));
+  const ufs      = new Set(getChecked('cb-uf').map(Number));
   const frenteMin = parseFloat(document.getElementById('frente-min').value);
   const frenteMax = parseFloat(document.getElementById('frente-max').value);
   const fondoMin  = parseFloat(document.getElementById('fondo-min').value);
@@ -160,6 +188,7 @@ async function aplicarFiltros() {
   if (!barrios.length) { setStatus('Seleccioná al menos un barrio.'); return; }
 
   if (capa) { map.removeLayer(capa); capa = null; }
+  if (capaPoligono) { map.removeLayer(capaPoligono); capaPoligono = null; }
   setStatus('Cargando...');
   document.getElementById('btn-filtrar').disabled = true;
 
@@ -168,9 +197,10 @@ async function aplicarFiltros() {
     for (const barrio of barrios) {
       const rows = await cargarBarrio(barrio);
       rows.forEach(r => {
-        const [lat, lon, dir, pda, frente, fondo, tipo, altMax, altMaxNum] = r;
+        const [lat, lon, dir, pda, frente, fondo, tipo, altMax, altMaxNum, uf, smp] = r;
         if (lat === null || lon === null || lat > -34.2 || lat < -34.8 || lon > -58.1 || lon < -58.7) return;
         if (!tipos.has(tipo ?? 'ND')) return;
+        if (!ufs.has(uf)) return;
         if (!isNaN(frenteMin) && (frente === null || frente < frenteMin)) return;
         if (!isNaN(frenteMax) && (frente === null || frente > frenteMax)) return;
         if (!isNaN(fondoMin)  && (fondo  === null || fondo  < fondoMin))  return;
@@ -184,7 +214,7 @@ async function aplicarFiltros() {
           L.circleMarker([lat, lon], {
             radius: 5, color: '#c0392b', weight: 1,
             fillColor: '#e74c3c', fillOpacity: 0.7
-          }).bindPopup(mkPopup(r, barrio), {maxWidth: 280})
+          }).bindPopup(mkPopup(r, barrio), {maxWidth: 280}).on('click', () => dibujarPoligono(smp))
         );
       });
     }
@@ -204,12 +234,13 @@ async function aplicarFiltros() {
 function limpiarFiltros() {
   document.querySelectorAll('.cb-barrio').forEach(cb => cb.checked = false);
   document.querySelectorAll('.cb-tipo').forEach(cb => cb.checked = true);
+  document.querySelectorAll('.cb-uf').forEach(cb => cb.checked = true);
   ['frente-min','frente-max','fondo-min','fondo-max','altura-min','altura-max']
     .forEach(id => document.getElementById(id).value = '');
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-04 23:14";
+document.getElementById("ver").textContent = "v2026-05-04 23:34";
 </script>
 </body>
 </html>
