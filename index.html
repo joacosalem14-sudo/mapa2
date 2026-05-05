@@ -51,7 +51,7 @@ h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom
 <body>
 <div id="app">
 <div id="panel">
-  <h2>Catastro CABA</h2>
+  <h2>Catastro CABA <span id="ver"></span></h2>
 
   <div class="filter-group">
     <h3>Barrio <span class="sel-link" onclick="toggleAll('cb-barrio',true)">todos</span> <span class="sel-link" onclick="toggleAll('cb-barrio',false)">ninguno</span></h3>
@@ -169,7 +169,7 @@ async function aplicarFiltros() {
       const rows = await cargarBarrio(barrio);
       rows.forEach(r => {
         const [lat, lon, dir, pda, frente, fondo, tipo, altMax, altMaxNum] = r;
-        if (lat === null || lon === null) return;
+        if (lat === null || lon === null || lat > -34.2 || lat < -34.8 || lon > -58.1 || lon < -58.7) return;
         if (!tipos.has(tipo ?? 'ND')) return;
         if (!isNaN(frenteMin) && (frente === null || frente < frenteMin)) return;
         if (!isNaN(frenteMax) && (frente === null || frente > frenteMax)) return;
@@ -209,6 +209,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
+document.getElementById("ver").textContent = "v2026-05-04 23:14";
 </script>
 </body>
 </html>
