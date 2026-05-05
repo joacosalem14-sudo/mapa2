@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catastro CABA</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; }
+#app { display: flex; height: 100dvh; }
+#panel {
+  width: 280px; min-width: 280px; background: #f8f9fa;
+  border-right: 1px solid #dee2e6; padding: 10px;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+}
+#map { flex: 1; }
+h2 { font-size: 13px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 2px; }
+.filter-group { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
+.filter-group h3 { font-size: 11px; color: #555; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; letter-spacing: .3px; }
+.cb-list { max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.cb-list label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #333; padding: 3px 0; }
+.cb-list input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; }
+.range-row { display: flex; gap: 5px; align-items: center; }
+.range-row input { flex: 1; padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; min-width: 0; }
+.range-row span { font-size: 11px; color: #aaa; flex-shrink: 0; }
+.sel-link { font-size: 10px; color: #0066cc; cursor: pointer; text-decoration: underline; font-weight: normal; margin-left: 4px; }
+#btn-filtrar {
+  background: #0066cc; color: white; border: none; border-radius: 6px;
+  padding: 10px; font-size: 13px; cursor: pointer; width: 100%; font-weight: bold;
+}
+#btn-filtrar:active { background: #0055aa; }
+#btn-limpiar {
+  background: white; color: #888; border: 1px solid #ddd; border-radius: 6px;
+  padding: 6px; font-size: 11px; cursor: pointer; width: 100%;
+}
+#status { font-size: 11px; color: #666; text-align: center; min-height: 16px; }
+.popup-table { border-collapse: collapse; font-size: 12px; min-width: 220px; }
+.popup-table tr:nth-child(even) { background: #f9f9f9; }
+.popup-table td { padding: 3px 7px; }
+.popup-table td:first-child { color: #888; white-space: nowrap; }
+.popup-table td:last-child { font-weight: 500; }
+@media (max-width: 600px) {
+  #app { flex-direction: column; }
+  #panel { width: 100%; min-width: unset; max-height: 45dvh; border-right: none; border-bottom: 1px solid #dee2e6; }
+  #map { flex: 1; min-height: 0; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="panel">
+  <h2>Catastro CABA</h2>
+
+  <div class="filter-group">
+    <h3>Barrio <span class="sel-link" onclick="toggleAll('cb-barrio',true)">todos</span> <span class="sel-link" onclick="toggleAll('cb-barrio',false)">ninguno</span></h3>
+    <div class="cb-list" id="lista-barrios"></div>
+  </div>
+
+  <div class="filter-group">
+    <h3>Zonificación <span class="sel-link" onclick="toggleAll('cb-tipo',true)">todas</span> <span class="sel-link" onclick="toggleAll('cb-tipo',false)">ninguna</span></h3>
+    <div class="cb-list" id="lista-tipos"></div>
+  </div>
+
+  <div class="filter-group">
+    <h3>Frente (m)</h3>
+    <div class="range-row">
+      <input type="number" id="frente-min" placeholder="Desde" min="0" inputmode="decimal">
+      <span>—</span>
+      <input type="number" id="frente-max" placeholder="Hasta" min="0" inputmode="decimal">
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <h3>Fondo (m)</h3>
+    <div class="range-row">
+      <input type="number" id="fondo-min" placeholder="Desde" min="0" inputmode="decimal">
+      <span>—</span>
+      <input type="number" id="fondo-max" placeholder="Hasta" min="0" inputmode="decimal">
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <h3>Altura máx. (m)</h3>
+    <div class="range-row">
+      <input type="number" id="altura-min" placeholder="Desde" min="0" inputmode="decimal">
+      <span>—</span>
+      <input type="number" id="altura-max" placeholder="Hasta" min="0" inputmode="decimal">
+    </div>
+  </div>
+
+  <button id="btn-filtrar" onclick="aplicarFiltros()">Aplicar filtros</button>
+  <button id="btn-limpiar" onclick="limpiarFiltros()">Limpiar</button>
+  <div id="status"></div>
+</div>
+<div id="map"></div>
+</div>
+
+<script>
+const BARRIOS = ["AGRONOMIA", "ALMAGRO", "BALVANERA", "BARRACAS", "BELGRANO", "BOCA", "BOEDO", "CABALLITO", "CHACARITA", "COGHLAN", "COLEGIALES", "CONSTITUCION", "FLORES", "FLORESTA", "LINIERS", "MATADEROS", "MONSERRAT", "MONTE CASTRO", "NUEVA POMPEYA", "NÚÑEZ", "PALERMO", "PARQUE AVELLANEDA", "PARQUE CHACABUCO", "PARQUE CHAS", "PARQUE PATRICIOS", "PATERNAL", "PUERTO MADERO", "RECOLETA", "RETIRO", "SAAVEDRA", "SAN CRISTOBAL", "SAN NICOLAS", "SAN TELMO", "VELEZ SARSFIELD", "VERSALLES", "VILLA CRESPO", "VILLA DEL PARQUE", "VILLA DEVOTO", "VILLA GRAL. MITRE", "VILLA LUGANO", "VILLA LURO", "VILLA ORTUZAR", "VILLA PUEYRREDON", "VILLA REAL", "VILLA RIACHUELO", "VILLA SANTA RITA", "VILLA SOLDATI", "VILLA URQUIZA"];
+const TIPOS   = ["CA", "CA / CM", "CA / USAA", "CA / USAM", "CM", "CM / CA", "CM / USAA", "CM / USAM", "ND", "USAA", "USAA / CA", "USAA / CM", "USAA / USAB1", "USAA / USAB2", "USAA / USAM", "USAB1", "USAB1 / USAA", "USAB1 / USAB2", "USAB1 / USAM", "USAB2", "USAB2 / CA", "USAB2 / USAA", "USAB2 / USAB1", "USAB2 / USAM", "USAM", "USAM / CM", "USAM / USAA", "USAM / USAB1", "USAM / USAB2"];
+
+const listaBarrios = document.getElementById('lista-barrios');
+BARRIOS.forEach(b => {
+  listaBarrios.innerHTML += `<label><input type="checkbox" class="cb-barrio" value="${b}"> ${b}</label>`;
+});
+const listaTipos = document.getElementById('lista-tipos');
+TIPOS.forEach(t => {
+  listaTipos.innerHTML += `<label><input type="checkbox" class="cb-tipo" value="${t}" checked> ${t}</label>`;
+});
+
+const map = L.map('map').setView([-34.615, -58.44], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap', maxZoom: 19
+}).addTo(map);
+
+let capa = null;
+const cache = {};
+
+function toggleAll(cls, val) {
+  document.querySelectorAll('.' + cls).forEach(cb => cb.checked = val);
+}
+function getChecked(cls) {
+  return [...document.querySelectorAll('.' + cls + ':checked')].map(cb => cb.value);
+}
+function nd(v) { return (v === null || v === undefined || v === '') ? 'ND' : v; }
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+function mkPopup(r, barrio) {
+  const [lat, lon, dir, pda, frente, fondo, tipo, altMax] = r;
+  return `<table class="popup-table">
+    <tr><td>Dirección / Barrio</td><td><b>${nd(dir)} / ${barrio}</b></td></tr>
+    <tr><td>Partida Matriz</td><td>${nd(pda)}</td></tr>
+    <tr><td>Frente / Fondo</td><td>${nd(frente)} m / ${nd(fondo)} m</td></tr>
+    <tr><td>Altura Máx.</td><td>${nd(altMax)}</td></tr>
+    <tr><td>Zonificación</td><td>${nd(tipo)}</td></tr>
+  </table>`;
+}
+
+async function cargarBarrio(barrio) {
+  if (cache[barrio]) return cache[barrio];
+  const r = await fetch(`datos/${encodeURIComponent(barrio)}.json`);
+  const data = await r.json();
+  cache[barrio] = data;
+  return data;
+}
+
+async function aplicarFiltros() {
+  const barrios   = getChecked('cb-barrio');
+  const tipos     = new Set(getChecked('cb-tipo'));
+  const frenteMin = parseFloat(document.getElementById('frente-min').value);
+  const frenteMax = parseFloat(document.getElementById('frente-max').value);
+  const fondoMin  = parseFloat(document.getElementById('fondo-min').value);
+  const fondoMax  = parseFloat(document.getElementById('fondo-max').value);
+  const alturaMin = parseFloat(document.getElementById('altura-min').value);
+  const alturaMax = parseFloat(document.getElementById('altura-max').value);
+  const hayAltura = !isNaN(alturaMin) || !isNaN(alturaMax);
+
+  if (!barrios.length) { setStatus('Seleccioná al menos un barrio.'); return; }
+
+  if (capa) { map.removeLayer(capa); capa = null; }
+  setStatus('Cargando...');
+  document.getElementById('btn-filtrar').disabled = true;
+
+  try {
+    const todosMarkers = [];
+    for (const barrio of barrios) {
+      const rows = await cargarBarrio(barrio);
+      rows.forEach(r => {
+        const [lat, lon, dir, pda, frente, fondo, tipo, altMax, altMaxNum] = r;
+        if (!tipos.has(tipo ?? 'ND')) return;
+        if (!isNaN(frenteMin) && (frente === null || frente < frenteMin)) return;
+        if (!isNaN(frenteMax) && (frente === null || frente > frenteMax)) return;
+        if (!isNaN(fondoMin)  && (fondo  === null || fondo  < fondoMin))  return;
+        if (!isNaN(fondoMax)  && (fondo  === null || fondo  > fondoMax))  return;
+        if (hayAltura) {
+          if (altMaxNum === null) return;
+          if (!isNaN(alturaMin) && altMaxNum < alturaMin) return;
+          if (!isNaN(alturaMax) && altMaxNum > alturaMax) return;
+        }
+        todosMarkers.push(
+          L.circleMarker([lat, lon], {
+            radius: 5, color: '#c0392b', weight: 1,
+            fillColor: '#e74c3c', fillOpacity: 0.7
+          }).bindPopup(mkPopup(r, barrio), {maxWidth: 280})
+        );
+      });
+    }
+
+    if (!todosMarkers.length) { setStatus('Sin resultados.'); return; }
+    capa = L.layerGroup(todosMarkers).addTo(map);
+    map.fitBounds(L.latLngBounds(todosMarkers.map(m => m.getLatLng())), {padding: [20, 20]});
+    setStatus(todosMarkers.length.toLocaleString() + ' parcelas');
+  } catch(e) {
+    setStatus('Error al cargar datos.');
+    console.error(e);
+  } finally {
+    document.getElementById('btn-filtrar').disabled = false;
+  }
+}
+
+function limpiarFiltros() {
+  document.querySelectorAll('.cb-barrio').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.cb-tipo').forEach(cb => cb.checked = true);
+  ['frente-min','frente-max','fondo-min','fondo-max','altura-min','altura-max']
+    .forEach(id => document.getElementById(id).value = '');
+  if (capa) { map.removeLayer(capa); capa = null; }
+  setStatus('');
+}
+</script>
+</body>
+</html>
