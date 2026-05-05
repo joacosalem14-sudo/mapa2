@@ -156,7 +156,8 @@ function dibujarPoligono(smp, marker) {
     .then(r => r.json())
     .then(data => {
       const geom = data.geometria || data.geometry || data;
-      if (!geom) return;
+      console.log('EPOK data:', JSON.stringify(data).slice(0,200));
+      if (!geom || !geom.type) { console.warn('geom invalido:', geom); return; }
       capaPoligono = L.geoJSON(geom, { style: { color: '#e91e8c', weight: 2.5, fillColor: '#e91e8c', fillOpacity: 0.15 } }).addTo(map);
       const c = geomCentroid(geom);
       if (c && marker) {
@@ -164,7 +165,7 @@ function dibujarPoligono(smp, marker) {
         if (smp) { correctedPos[smp] = c; localStorage.setItem('catastro_pos', JSON.stringify(correctedPos)); }
       }
     })
-    .catch(() => {});
+    .catch(err => console.error('EPOK error:', err));
 }
 
 function mkPopup(r, barrio) {
@@ -256,7 +257,7 @@ function limpiarFiltros() {
   if (capa) { map.removeLayer(capa); capa = null; }
   setStatus('');
 }
-document.getElementById("ver").textContent = "v2026-05-05 11:36";
+document.getElementById("ver").textContent = "v2026-05-05 11:42";
 </script>
 </body>
 </html>
